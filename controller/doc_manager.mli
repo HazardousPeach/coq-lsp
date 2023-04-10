@@ -19,7 +19,10 @@ module Check : sig
   (** Check pending documents, return [None] if there is none pending, or
       [Some rqs] the list of requests ready to execute after the check. Sends
       progress and diagnostics notifications using output function [ofn]. *)
-  val maybe_check : ofn:(Yojson.Safe.t -> unit) -> concise:bool -> Int.Set.t option
+  val maybe_check : 
+       ofn:(Yojson.Safe.t -> unit) 
+    -> concise:bool 
+    -> Int.Set.t option
 end
 
 (** Create a document *)
