@@ -151,7 +151,7 @@ end
 let diags_of_doc doc =
   List.concat_map Fleche.Doc.Node.diags doc.Fleche.Doc.nodes
 
-let send_diags ~ofn ~_concise ~doc =
+let send_diags ~ofn ~doc =
   let diags = diags_of_doc doc in
   if List.length diags > 0 || !Fleche.Config.v.verbosity > 1 then
     let diags =
@@ -169,10 +169,7 @@ let send_perf_data ~ofn ~(doc : Fleche.Doc.t) =
 module Check : sig
   val schedule : uri:Lang.LUri.File.t -> unit
   val deschedule : uri:Lang.LUri.File.t -> unit
-  val maybe_check : 
-       ofn:(Yojson.Safe.t -> unit) 
-    -> concise: bool 
-    -> Int.Set.t option
+  val maybe_check : ofn:(Yojson.Safe.t -> unit) -> Int.Set.t option
 end = struct
   let pending = ref None
 
@@ -187,17 +184,17 @@ end = struct
     | Stopped _ -> false
 
   (* Notification handling; reply is optional / asynchronous *)
-  let check ~ofn ~concise ~uri =
+  let check ~ofn ~uri =
     LIO.trace "process_queue" "resuming document checking";
     match Handle.find_opt ~uri with
     | Some handle ->
       let target = get_check_target handle.pt_requests in
       let doc = Fleche.Doc.check ~ofn ~target ~doc:handle.doc () in
       let requests = Handle.update_doc_info ~handle ~doc in
-      send_diags ~ofn ~doc ~_concise:concise;
-      if !Fleche.Config.v.verbosity > 1 then (
-        (* Only if completed! *)
-        if completed ~doc then send_perf_data ~ofn ~doc);
+      send_diags ~ofn ~doc;
+      if !Fleche.Config.v.verbosity > 1 then
+        if (* Only if completed! *)
+           completed ~doc then send_perf_data ~ofn ~doc;
       (* Only if completed! *)
       if completed ~doc then pending := None;
       requests
@@ -206,8 +203,7 @@ end = struct
         ("file " ^ Lang.LUri.File.to_string_uri uri ^ " not available");
       Int.Set.empty
 
-  let maybe_check ~ofn ~concise = 
-    Option.map (fun uri -> check ~ofn ~concise ~uri) !pending
+  let maybe_check ~ofn = Option.map (fun uri -> check ~ofn ~uri) !pending
   let schedule ~uri = pending := Some uri
 
   let deschedule ~uri =

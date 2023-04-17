@@ -469,8 +469,8 @@ type 'a cont =
   | Cont of 'a
   | Yield of 'a
 
-let check_or_yield ~ofn ~concise ~state =
-  match Doc_manager.Check.maybe_check ~ofn ~concise with
+let check_or_yield ~ofn ~state =
+  match Doc_manager.Check.maybe_check ~ofn with
   | None -> Yield state
   | Some ready ->
     let () = serve_postponed_requests ~ofn ready in
@@ -478,13 +478,13 @@ let check_or_yield ~ofn ~concise ~state =
 
 let request_queue = Queue.create ()
 
-let dispatch_or_resume_check ~ofn ~concise ~state =
+let dispatch_or_resume_check ~ofn ~state =
   match Queue.peek_opt request_queue with
   | None ->
     (* This is where we make progress on document checking; kind of IDLE
        workqueue. *)
     Control.interrupt := false;
-    check_or_yield ~ofn ~concise ~state
+    check_or_yield ~ofn ~state
   | Some com ->
     (* TODO: optimize the queue? EJGA: I've found that VS Code as a client keeps
        the queue tidy by itself, so this works fine as now *)
@@ -495,8 +495,8 @@ let dispatch_or_resume_check ~ofn ~concise ~state =
     Cont (dispatch_message ~ofn ~state com)
 
 (* Wrapper for the top-level call *)
-let dispatch_or_resume_check ~ofn ~concise ~state =
-  try Some (dispatch_or_resume_check ~ofn ~concise ~state) with
+let dispatch_or_resume_check ~ofn ~state =
+  try Some (dispatch_or_resume_check ~ofn ~state) with
   | U.Type_error (msg, obj) ->
     LIO.trace_object msg obj;
     Some (Yield state)
